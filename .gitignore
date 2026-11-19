@@ -1,0 +1,18 @@
+# ---- Python (backend) ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Images extracted from the PDF during ingestion (regenerated each run)
+backend/data/images/
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Flutter-specific ignores live in mobile_app/.gitignore
