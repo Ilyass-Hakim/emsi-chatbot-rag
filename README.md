@@ -49,10 +49,17 @@ emsi-chatbot-rag/
 ### Prerequisites
 
 - Flutter SDK 3.x
-- Python 3.12
+- Python 3.12 or later
 - Docker Desktop
 - Ollama 0.12.7 or later
 - An NVIDIA GPU with 8 GB of VRAM or more is recommended
+
+### Services
+
+```bash
+docker compose up -d          # Qdrant on http://localhost:6333
+ollama pull qwen3-vl:4b       # local vision-language model
+```
 
 ### Mobile app
 
