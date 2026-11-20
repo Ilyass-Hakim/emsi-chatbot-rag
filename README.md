@@ -61,6 +61,21 @@ docker compose up -d          # Qdrant on http://localhost:6333
 ollama pull qwen3-vl:4b       # local vision-language model
 ```
 
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate            # on macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Place the PDF documents in `backend/data/`, then build the vector index:
+
+```bash
+python ingest.py
+```
+
 ### Mobile app
 
 ```bash
