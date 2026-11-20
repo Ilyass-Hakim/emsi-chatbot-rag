@@ -73,14 +73,21 @@ CAPTION_PROMPT = (
 )
 
 
-def describe_image(path) -> str:
-    """Ask the vision-language model for a short French description of an image."""
-    response = ollama.chat(
-        model=config.VLM_MODEL,
-        messages=[{"role": "user", "content": CAPTION_PROMPT, "images": [str(path)]}],
-        think=False,
-    )
-    return response.message.content.strip()
+def describe_image(path, attempts: int = 3) -> str:
+    """Ask the vision-language model for a short French description of an image.
+
+    Small models occasionally return an empty answer, so the request is retried.
+    """
+    for _ in range(attempts):
+        response = ollama.chat(
+            model=config.VLM_MODEL,
+            messages=[{"role": "user", "content": CAPTION_PROMPT, "images": [str(path)]}],
+            think=False,
+        )
+        caption = response.message.content.strip()
+        if caption:
+            return caption
+    return "Image extraite de la brochure de l'EMSI."
 
 
 # 3. Chunking ------------------------------------------------------------------
