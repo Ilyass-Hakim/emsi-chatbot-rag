@@ -1,7 +1,7 @@
 """Ingest the PDF documents of data/ into Qdrant.
 
 For every PDF, the pipeline:
-  1. extracts the text of each page and its images (PyMuPDF);
+  1. extracts the text, tables and images of each page (PyMuPDF);
   2. asks the vision-language model to describe each image (Ollama);
   3. splits the text into overlapping chunks of tokens;
   4. embeds text (BGE-M3) and images (CLIP) and stores them in Qdrant.
@@ -12,13 +12,12 @@ import uuid
 
 import ollama
 import pymupdf
-import torch
 from PIL import Image
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer
 
 import config
+from embeddings import clip_image_model, text_model
 
 
 # 1. Extraction ----------------------------------------------------------------
@@ -44,13 +43,29 @@ def save_image(doc: pymupdf.Document, xref: int, path, max_side: int = 1024) -> 
     image.save(path, "JPEG", quality=90)
 
 
-def extract_pdf(pdf_path) -> tuple[list[dict], list[dict]]:
-    """Return the cleaned text of each page and the images worth keeping."""
+def extract_pdf(pdf_path) -> tuple[list[dict], list[dict], list[dict]]:
+    """Return the text of each page, its tables and the images worth keeping.
+
+    Tables are kept as Markdown so that their rows and columns survive, and their
+    area is left out of the page text so that their content is not stored twice.
+    """
     doc = pymupdf.open(pdf_path)
-    pages, images, seen = [], [], set()
+    pages, tables, images, seen = [], [], [], set()
     for page in doc:
         number = page.number + 1
-        pages.append({"page": number, "text": clean_text(page.get_text())})
+
+        found = page.find_tables().tables
+        boxes = [pymupdf.Rect(table.bbox) for table in found]
+        for table in found:
+            tables.append({"page": number, "markdown": table.to_markdown()})
+
+        blocks = page.get_text("blocks")  # (x0, y0, x1, y1, text, block_no, block_type)
+        text = "\n".join(
+            block[4] for block in blocks
+            if block[6] == 0 and not any(pymupdf.Rect(block[:4]).intersects(box) for box in boxes)
+        )
+        pages.append({"page": number, "text": clean_text(text)})
+
         for img in page.get_images(full=True):
             xref, width, height = img[0], img[2], img[3]
             if xref in seen or min(width, height) < config.MIN_IMAGE_SIZE:
@@ -59,7 +74,7 @@ def extract_pdf(pdf_path) -> tuple[list[dict], list[dict]]:
             path = config.IMAGES_DIR / f"{pdf_path.stem}_p{number}_{xref}.jpg"
             save_image(doc, xref, path)
             images.append({"page": number, "path": path})
-    return pages, images
+    return pages, tables, images
 
 
 # 2. Image descriptions --------------------------------------------------------
@@ -119,51 +134,52 @@ def create_collection(client: QdrantClient) -> None:
     )
 
 
-def main() -> None:
+def run(log=print) -> int:
+    """Rebuild the collection from every PDF in DATA_DIR and return the number of points.
+
+    `log` receives progress messages: print in a terminal, st.write in Streamlit.
+    """
     pdfs = sorted(config.DATA_DIR.glob("*.pdf"))
     if not pdfs:
-        raise SystemExit(f"No PDF found in {config.DATA_DIR}")
+        raise FileNotFoundError(f"No PDF found in {config.DATA_DIR}")
     config.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
     # Steps 1 and 2: extract each PDF, then describe its images with the VLM
     documents = []
     for pdf in pdfs:
-        pages, images = extract_pdf(pdf)
-        print(f"{pdf.name}: {len(pages)} pages, {len(images)} images")
+        pages, tables, images = extract_pdf(pdf)
+        log(f"{pdf.name}: {len(pages)} pages, {len(tables)} tables, {len(images)} images")
         for i, image in enumerate(images, start=1):
             image["caption"] = describe_image(image["path"])
-            print(f"  described image {i}/{len(images)} (page {image['page']})")
-        documents.append((pdf, pages, images))
+            log(f"  described image {i}/{len(images)} (page {image['page']})")
+        documents.append((pdf, pages, tables, images))
     ollama.generate(model=config.VLM_MODEL, keep_alive=0)  # free GPU memory for the embedders
 
-    # Step 3: one record per text chunk and per image
+    # Step 3: one record per text chunk, per table and per image
     tokenizer = AutoTokenizer.from_pretrained(config.TEXT_MODEL)
     records = []
-    for pdf, pages, images in documents:
+    for pdf, pages, tables, images in documents:
         for page in pages:
             for chunk in split_text(page["text"], tokenizer):
                 if len(chunk.split()) >= config.MIN_CHUNK_WORDS:
                     records.append({"type": "text", "content": chunk,
                                     "page": page["page"], "source": pdf.name})
+        for table in tables:
+            records.append({"type": "table", "content": table["markdown"],
+                            "page": table["page"], "source": pdf.name})
         for image in images:
             records.append({"type": "image", "content": image["caption"], "page": image["page"],
                             "source": pdf.name, "image": image["path"].name})
-    print(f"{len(records)} records to embed")
+    log(f"{len(records)} records to embed")
 
     # Step 4: embed and store
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    text_model = SentenceTransformer(config.TEXT_MODEL, device=device)
-    if device == "cuda":
-        text_model.half()  # half precision: same results, half the GPU memory
-    clip_model = SentenceTransformer(config.CLIP_IMAGE_MODEL, device=device)
-
     # Every record gets a "text" vector; images also get an "image" vector
-    text_vectors = text_model.encode(
+    text_vectors = text_model().encode(
         [record["content"] for record in records],
         batch_size=16, normalize_embeddings=True, show_progress_bar=True,
     )
     image_records = [record for record in records if record["type"] == "image"]
-    image_vectors = clip_model.encode(
+    image_vectors = clip_image_model().encode(
         [Image.open(config.IMAGES_DIR / record["image"]) for record in image_records],
         batch_size=16, show_progress_bar=True,
     ) if image_records else []
@@ -179,8 +195,9 @@ def main() -> None:
     client = QdrantClient(url=config.QDRANT_URL)
     create_collection(client)
     client.upload_points(config.COLLECTION, points=points, batch_size=64)
-    print(f"Stored {len(points)} points in collection '{config.COLLECTION}'")
+    log(f"Stored {len(points)} points in collection '{config.COLLECTION}'")
+    return len(points)
 
 
 if __name__ == "__main__":
-    main()
+    run()
