@@ -76,6 +76,12 @@ Place the PDF documents in `backend/data/`, then build the vector index:
 python ingest.py
 ```
 
+Or use the ingestion dashboard to upload documents, rebuild the index and test the search:
+
+```bash
+streamlit run ingest_app.py
+```
+
 Start the API (interactive documentation at http://localhost:8000/docs):
 
 ```bash
