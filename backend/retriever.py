@@ -8,35 +8,14 @@ with Reciprocal Rank Fusion (RRF):
 
 import io
 import sys
-from functools import lru_cache
 
-import torch
 from PIL import Image
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 
 import config
+from embeddings import clip_image_model, clip_text_model, text_model
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 client = QdrantClient(url=config.QDRANT_URL)
-
-
-# Models are loaded on first use, then kept in memory.
-
-@lru_cache
-def text_model() -> SentenceTransformer:
-    model = SentenceTransformer(config.TEXT_MODEL, device=DEVICE)
-    return model.half() if DEVICE == "cuda" else model
-
-
-@lru_cache
-def clip_text_model() -> SentenceTransformer:
-    return SentenceTransformer(config.CLIP_TEXT_MODEL, device=DEVICE)
-
-
-@lru_cache
-def clip_image_model() -> SentenceTransformer:
-    return SentenceTransformer(config.CLIP_IMAGE_MODEL, device=DEVICE)
 
 
 def search(question: str, k: int = 5, photo: bytes | None = None) -> list[dict]:

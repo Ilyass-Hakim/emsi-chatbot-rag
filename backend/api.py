@@ -15,7 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import config
-from retriever import clip_text_model, search, text_model
+from embeddings import clip_text_model, text_model
+from retriever import search
 
 SYSTEM_PROMPT = """Tu es EMSI ChatBot, l'assistant officiel de l'EMSI \
 (École Marocaine des Sciences de l'Ingénieur).
