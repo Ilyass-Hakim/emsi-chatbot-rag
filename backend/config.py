@@ -29,3 +29,7 @@ CHUNK_TOKENS = 300       # size of a text chunk, in tokens
 CHUNK_OVERLAP = 50       # tokens shared by two consecutive chunks
 MIN_IMAGE_SIZE = 150     # images smaller than this (in pixels) are skipped
 MIN_CHUNK_WORDS = 10     # shorter chunks (titles, page numbers) are skipped
+
+# Retrieval parameters
+RRF_K = 2                  # small k: a top rank in one list beats a low rank in two lists
+IMAGE_SEARCH_WEIGHT = 0.2  # weight of the question-to-image search in the fusion
