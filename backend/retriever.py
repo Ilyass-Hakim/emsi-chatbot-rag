@@ -4,11 +4,7 @@ A question is searched in several ways, and the result lists are merged
 with Reciprocal Rank Fusion (RRF):
   - the question against text chunks and image captions (BGE-M3);
   - the question against the images themselves (multilingual CLIP);
-  - an optional photo sent by the user against the images (CLIP).
-
-Usage:
-    python retriever.py "Quelles filières propose l'EMSI ?"
-"""
+  - an optional photo sent by the user against the images (CLIP)."""
 
 import io
 import sys

@@ -5,9 +5,6 @@ For every PDF, the pipeline:
   2. asks the vision-language model to describe each image (Ollama);
   3. splits the text into overlapping chunks of tokens;
   4. embeds text (BGE-M3) and images (CLIP) and stores them in Qdrant.
-
-Usage:
-    python ingest.py
 """
 
 import io
