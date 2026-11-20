@@ -5,8 +5,8 @@ __pycache__/
 venv/
 .env
 
-# Images extracted from the PDF during ingestion (regenerated each run)
-backend/data/images/
+# Source documents and generated files (not part of the codebase)
+backend/data/
 
 # ---- Editors / OS ----
 .vscode/

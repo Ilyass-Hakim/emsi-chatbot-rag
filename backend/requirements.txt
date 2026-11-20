@@ -1,0 +1,24 @@
+# PyTorch CUDA 13.0 builds (PyPI only ships CPU builds for Windows)
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+# Deep learning runtime
+torch>=2.14,<2.15
+
+# Document ingestion and embeddings
+pymupdf>=1.24
+pillow>=10.0
+sentence-transformers>=3.0
+
+# Vector database client
+qdrant-client>=1.16
+
+# Local LLM client
+ollama>=0.4
+
+# Web API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+
+# Ingestion dashboard
+streamlit>=1.40
