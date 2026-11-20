@@ -76,6 +76,12 @@ Place the PDF documents in `backend/data/`, then build the vector index:
 python ingest.py
 ```
 
+Start the API (interactive documentation at http://localhost:8000/docs):
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8000
+```
+
 ### Mobile app
 
 ```bash

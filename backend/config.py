@@ -33,3 +33,8 @@ MIN_CHUNK_WORDS = 10     # shorter chunks (titles, page numbers) are skipped
 # Retrieval parameters
 RRF_K = 2                  # small k: a top rank in one list beats a low rank in two lists
 IMAGE_SEARCH_WEIGHT = 0.2  # weight of the question-to-image search in the fusion
+
+# Answer generation
+TOP_K = 8                  # excerpts given to the model for each question
+MAX_CONTEXT_IMAGES = 1     # retrieved images the model also looks at
+CONTEXT_WINDOW = 8192      # tokens the model can read at once (prompt + answer)
