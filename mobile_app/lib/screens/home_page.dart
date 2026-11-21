@@ -59,11 +59,11 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.home),
+              leading: const Icon(Icons.smart_toy_outlined),
               title: const Text('Emsi CHATBOT'),
               onTap: () {
-                // Navigate to Home Page
-                Navigator.pop(context);
+                Navigator.pop(context); // close the drawer
+                Navigator.pushNamed(context, '/chat');
               },
             ),
             Divider(color: Colors.grey),
